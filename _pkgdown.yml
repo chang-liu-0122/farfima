@@ -1,0 +1,27 @@
+url: https://chang-liu-0122.github.io/farfima/
+template:
+  bootstrap: 5
+
+reference:
+- title: Fit and forecast
+  contents:
+  - split_curves
+  - plot_curves
+  - farfima
+  - fitted.farfima
+  - plot.farfima
+  - predict.farfima
+  - plot.farfima_forecast
+  - as.data.frame.farfima_forecast
+- title: Steps on their own
+  contents:
+  - estimate_memory
+  - frac_diff
+  - select_order
+  - estimate_operators
+- title: Simulation
+  contents:
+  - sim_farfima
+- title: Package overview
+  contents:
+  - farfima-package

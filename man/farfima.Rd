@@ -142,8 +142,8 @@ benchmark;
 sample.
 }
 
-\code{print()} and \code{summary()} show the fit, and \code{coef()} gives \code{d}, \code{phi} and
-\code{theta}.
+\code{print()} and \code{summary()} show the fit, \code{coef()} gives \code{d}, \code{phi} and
+\code{theta}, and \code{\link[=plot.farfima]{plot()}} draws the fitted or residual curves.
 }
 \description{
 Fits a functional autoregressive fractionally integrated moving-average

@@ -41,5 +41,5 @@ dim(fitted(fit))
 range(fitted(fit) + residuals(fit) - sim[, 51:200], na.rm = TRUE)
 }
 \seealso{
-\code{\link[=farfima]{farfima()}}
+\code{\link[=farfima]{farfima()}}; \code{\link[=plot.farfima]{plot()}} to draw the curves.
 }

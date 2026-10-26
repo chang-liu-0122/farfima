@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="man/figures/macquarie-logo.png" alt="Macquarie University" width="200">
+  &emsp;
+  <img src="man/figures/usyd-logo.png" alt="The University of Sydney" width="135">
+</p>
+
 # farfima
 
 Modelling, forecasting and visualising long-memory functional time series with
@@ -35,8 +41,9 @@ work.
 library(farfima)
 library(demography)
 
-# French female log death rates, ages 0 to 100, 1901 to 2006
-x = log10(smooth.demogdata(extract.years(fr.mort, 1901:2006))$rate$female[1:101, ])
+# French female log death rates, 1901 to 2006, ages 0 to 94 and 95+
+fr = extract.ages(extract.years(fr.mort, 1901:2006), 0:95)
+x = log10(smooth.demogdata(fr, method = "mspline", b = 65, weight = TRUE)$rate$female)
 plot_curves(x)
 
 # Training, validation and test samples
@@ -73,12 +80,14 @@ ECP, CPD, MIS and WIS of the conformal prediction bands.
 | Code | Shows |
 |---|---|
 | `plot_curves(x)` | rainbow plot of the curves, or one panel per period |
+| `plot(fit)` | the fitted curves, or the residual curves with `type = "residuals"` |
 | `plot(fit$order_selection)` | the criterion over the candidate orders |
 | `plot(fit$operators)` | heatmaps of the estimated operators |
 | `plot(fc)` | forecasts with their conformal prediction bands, by curve, horizon, grid point or recent years |
 
 ## Learn more
 
+- The package website: <https://chang-liu-0122.github.io/farfima/>
 - `vignette("farfima")`: a full walk-through of the package.
 - `?farfima`: the help page of the main function, with links to the others.
 

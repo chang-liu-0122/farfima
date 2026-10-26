@@ -3,6 +3,7 @@
 S3method(as.data.frame,farfima_forecast)
 S3method(coef,farfima)
 S3method(fitted,farfima)
+S3method(plot,farfima)
 S3method(plot,farfima_forecast)
 S3method(plot,farfima_operators)
 S3method(plot,farfima_order)

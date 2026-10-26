@@ -13,7 +13,8 @@
 #'    differenced curves as in [select_order()], estimates their operators as
 #'    in [estimate_operators()], and calibrates the conformal prediction bands
 #'    on the validation sample. [`fitted()`][fitted.farfima] and
-#'    [`residuals()`][fitted.farfima] give the in-sample fit.
+#'    [`residuals()`][fitted.farfima] give the in-sample fit, and
+#'    [`plot()`][plot.farfima] draws it.
 #' 3. [`predict()`][predict.farfima] forecasts from the fit, with conformal
 #'    prediction bands, and evaluates the forecasts on a test sample.
 #' 4. [`plot()`][plot.farfima_forecast] visualises the forecasts, and

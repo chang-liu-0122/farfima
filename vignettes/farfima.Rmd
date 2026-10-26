@@ -1,8 +1,9 @@
 ---
-title: "Using farfima"
+title: "farfima: Order Selection and Forecasting in Long-Memory Functional Time Series"
+author: "Chang Liu, Han Lin Shang, Garth Tarr and Samuel Müller"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{Using farfima}
+  %\VignetteIndexEntry{farfima: Order Selection and Forecasting in Long-Memory Functional Time Series}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 ---
@@ -12,11 +13,32 @@ knitr::opts_chunk$set(collapse = TRUE, comment = "#>", fig.width = 7, fig.height
                       eval = requireNamespace("demography", quietly = TRUE))
 ```
 
-This vignette fits a FARFIMA model to French female log death rates, ages 0 to 100, from 1901 to 2006.
+## 1. Introduction
 
-## 1. Data
+A functional time series is a sequence of curves observed over time, such as age-specific death rates in successive years. When the dependence between the curves decays slowly, the series has long memory. The functional autoregressive fractionally integrated moving-average (FARFIMA) model describes such series. The curves $X_t$ are fractionally differenced into short-memory curves $Y_t$,
+$$\nabla^d X_t(u) = Y_t(u), \qquad \nabla = 1 - B,$$
+where $B$ is the backshift operator and $d$ is the memory parameter. The curves $Y_t$ follow a functional autoregressive moving-average (FARMA) model of orders $p$ and $q$,
+$$Y_t(u) - \sum_{i=1}^{p} (\Phi_i Y_{t-i})(u) = \eta_t(u) + \sum_{j=1}^{q} (\Theta_j \eta_{t-j})(u),$$
+with autoregressive operators $\Phi_i$, moving-average operators $\Theta_j$ and innovations $\eta_t$.
 
-Curves are stored as a matrix with grid points in rows and time in columns, here ages by years.
+The farfima package fits this model in three steps. It estimates $d$, selects $p$ and $q$, and estimates the operators. It then forecasts the curves with conformal prediction bands. The main functions are:
+
+| Function | Purpose |
+|---|---|
+| `plot_curves()` | Rainbow plots of the curves |
+| `split_curves()` | Training, validation and test samples |
+| `farfima()` | Fit the model and calibrate the conformal prediction bands |
+| `fitted()`, `residuals()`, `plot()` | The in-sample fit |
+| `predict()` | Forecasts, and their evaluation on a test sample |
+| `plot()`, `as.data.frame()` | Plots and tables of the forecasts |
+| `estimate_memory()`, `frac_diff()`, `select_order()`, `estimate_operators()` | The steps of `farfima()` on their own |
+| `sim_farfima()` | Simulated curves |
+
+Each section below introduces one function and then applies it to French female mortality rates.
+
+## 2. Data
+
+The data are French female death rates from the demography package, for the years 1901 to 2006. Ages 0 to 94 are kept as single years, and ages 95 and above are combined into one group, which avoids zero rates at the oldest ages. The rates are smoothed by weighted penalised regression splines, constrained to increase with age above 65, and taken on the log10 scale. In farfima, curves are stored as a matrix with grid points in rows and time in columns, here ages by years. `fts` objects from the rainbow and ftsa packages also work.
 
 ```{r, message = FALSE, warning = FALSE}
 library(farfima)
@@ -24,59 +46,42 @@ library(demography)
 ```
 
 ```{r}
-x = log10(smooth.demogdata(extract.years(fr.mort, 1901:2006))$rate$female[1:101, ])
+fr = extract.ages(extract.years(fr.mort, 1901:2006), 0:95)
+x = log10(smooth.demogdata(fr, method = "mspline", b = 65, weight = TRUE)$rate$female)
 dim(x)
 ```
 
-`plot_curves()` draws a rainbow plot, from red for 1901 to violet for 2006. With `type = "periods"`, each period has its own panel.
+## 3. Rainbow plots: `plot_curves()`
+
+`plot_curves()` draws the curves coloured by time, from red for the earliest to violet for the latest. With `type = "rainbow"`, all curves are in one panel with a colour bar. With `type = "periods"`, each period has its own panel and the other curves are in grey. `periods` is the number of periods, or the first year of each period.
+
+The death rates fall over time at almost all ages. The curves of the war years stand out at young adult ages.
 
 ```{r, fig.height = 4}
-plot_curves(x, argvals = 0:100, xlab = "Age", ylab = "log10 death rate")
+plot_curves(x, xlab = "Age", ylab = "log10 death rate")
 ```
 
 ```{r, fig.height = 5.5}
-plot_curves(x, type = "periods", periods = c(1901, 1921, 1941, 1961, 1981), argvals = 0:100,
-            xlab = "Age", ylab = "log10 death rate")
+plot_curves(x, type = "periods", periods = c(1901, 1921, 1941, 1961, 1981), xlab = "Age",
+            ylab = "log10 death rate")
 ```
 
-## 2. Split the curves: `split_curves()`
+## 4. Training, validation and test samples: `split_curves()`
 
-The training sample is used for estimation, the validation sample for the conformal prediction bands and the test sample for evaluation.
+`split_curves()` splits the curves in time order. `train` and `valid` are the proportions of curves in the training and validation samples, rounded down, and the remaining curves form the test sample. The model is estimated on the training sample, the conformal prediction bands are calibrated on the validation sample, and the forecasts are evaluated on the test sample.
 
 ```{r}
 blocks = split_curves(x, train = 0.6, valid = 0.2)
 sapply(blocks, ncol)
 ```
 
-## 3. Fit the model: `farfima()`
+The training sample covers `r paste(range(colnames(blocks$train)), collapse = " to ")`, the validation sample `r paste(range(colnames(blocks$valid)), collapse = " to ")` and the test sample `r paste(range(colnames(blocks$test)), collapse = " to ")`.
 
-`farfima()` estimates `d`, selects `(p, q)`, estimates the operators and calibrates the conformal prediction bands for horizons 1 to `h`.
+## 5. Fitting the model: `farfima()`
 
-```{r}
-fit = farfima(blocks$train, blocks$valid,
-                d = "bc_lpwn2", order = "ic_full", p = 0:5, q = 0:5,
-                h = 10, level = c(0.8, 0.95), band = c("SR", "NS", "AC"),
-                trim = 20, seed = 1)
-fit
-```
+`farfima()` fits the model to the training sample in three steps. First, it estimates $d$ with `estimate_memory()`. Second, it centres and fractionally differences the training curves, drops the first `trim` differenced curves, and selects $p$ and $q$ as in `select_order()`. Third, it estimates the operators by the functional Hannan-Rissanen method, as in `estimate_operators()`. With a validation sample, it also forecasts up to `h` steps ahead from every validation origin, and uses the forecast errors to calibrate the conformal prediction bands for each horizon and level.
 
-```{r}
-fit$d
-fit$order
-names(fit)
-head(fit$order_selection$table)
-head(fit$calibration)
-```
-
-`fitted()` and `residuals()` give the in-sample fit. `fitted(fit) + residuals(fit)` returns the training curves.
-
-```{r}
-round(fitted(fit)[1:3, 1:4], 3)
-round(fitted(fit, scale = "differenced")[1:3, 1:4], 4)
-round(residuals(fit)[1:3, 1:4], 4)
-```
-
-The main arguments of `farfima()`:
+The main arguments are:
 
 | Argument | Sets | Options |
 |---|---|---|
@@ -93,6 +98,26 @@ The main arguments of `farfima()`:
 | `window` | window at each origin | `"expanding"` or `"fixed"` |
 | `trim` | differenced curves dropped | e.g. 20 |
 | `memory_args`, `order_args` | other settings of `estimate_memory()` and `select_order()` | e.g. `list(B = 50)` |
+
+The fit below estimates $d$ by BC-LPWN2, selects the orders by the functional information criterion over $p, q \in \{0, \dots, 5\}$, and calibrates the SR, NS and AC bands at the 80% and 95% levels for horizons up to 10 years.
+
+```{r}
+fit = farfima(blocks$train, blocks$valid,
+                d = "bc_lpwn2", order = "ic_full", p = 0:5, q = 0:5,
+                h = 10, level = c(0.8, 0.95), band = c("SR", "NS", "AC"),
+                trim = 20, seed = 1)
+fit
+```
+
+The estimate of $d$ is `r round(fit$d, 3)`. It is above 0.5, so the curves are non-stationary. The selected model for the differenced curves is FARMA(`r fit$order[1]`, `r fit$order[2]`). The fit is a list:
+
+```{r}
+fit$d
+fit$order
+names(fit)
+head(fit$order_selection$table)
+head(fit$calibration)
+```
 
 ### Other settings
 
@@ -130,16 +155,42 @@ fit_point
 farfima(blocks$train, order = "cv", trim = 20, verbose = FALSE)
 ```
 
-## 4. Forecast: `predict()`
+## 6. In-sample fit: `fitted()`, `residuals()` and `plot()`
 
-Without `test`, `predict()` forecasts `h` years after the end of the validation sample, 1984.
+Each fitted curve is the one-step-ahead forecast of a training curve from the curves before it, and each residual curve is the training curve minus its fitted curve. They cover the training curves left after trimming, and the first `max(p, q)` of them have no fit. `fitted()` gives the fitted curves on the scale of the data, or on the fractionally differenced scale with `scale = "differenced"`. `plot()` draws the fitted curves, or the residual curves with `type = "residuals"`.
+
+Here $\max(p, q) = `r max(fit$order)`$, so the first fitted curve, for `r colnames(fitted(fit))[1]`, is missing. `fitted(fit) + residuals(fit)` returns the training curves.
+
+```{r}
+round(fitted(fit)[1:3, 1:4], 3)
+round(fitted(fit, scale = "differenced")[1:3, 1:4], 4)
+round(residuals(fit)[1:3, 1:4], 4)
+```
+
+The fitted curves follow the training curves closely. The largest residuals are in the early 1940s, during the Second World War.
+
+```{r, fig.height = 4}
+plot(fit, xlab = "Age", ylab = "log10 death rate")
+```
+
+```{r, fig.height = 4}
+plot(fit, type = "residuals", xlab = "Age")
+```
+
+## 7. Forecasting: `predict()`
+
+`predict()` makes point forecasts up to `h` steps beyond the data, with the conformal prediction bands chosen in `farfima()`. Without `test`, the forecasts start after the last validation curve. With `test`, the forecasts are also made from every test origin and compared with the observed curves. The memory parameter and the orders stay fixed, and the operators and the mean are re-estimated at each origin.
+
+The evaluation has three tables. `point` gives the root mean squared prediction error (RMSPE) and the mean absolute prediction error (MAPE) of the point forecasts. `interval` gives the empirical coverage probability (ECP) of each band, the absolute difference between the ECP and the nominal level (CPD), and the mean interval score (MIS). `wis` gives the weighted interval score over the levels.
+
+Without `test`, `predict()` forecasts the `h` years after the end of the validation sample, 1984:
 
 ```{r}
 fc_future = predict(fit)
 fc_future
 ```
 
-With `test`, it also forecasts from every test year and compares the forecasts with the observed curves.
+With `test`, it also forecasts from every test year and compares the forecasts with the observed curves:
 
 ```{r}
 fc = predict(fit, test = blocks$test)
@@ -193,9 +244,11 @@ fc_seq
 plot(fc_seq, type = "horizons", h = c(1, 5, 10), xlab = "Age", ylab = "log10 death rate")
 ```
 
-## 5. Plot: `plot()`
+## 8. Plotting forecasts: `plot()`
 
-`plot()` draws the forecast beyond the data with its conformal prediction band. `target_test_curve = 11` draws the forecast of the 11th test year, 1995, made `h = 3` years earlier, with the observed curve.
+`plot()` draws a forecast in four ways. `type = "curve"` draws the forecast `h` steps beyond the data with its conformal prediction band. With `target_test_curve = k`, it draws the forecast of the k-th test curve made `h` steps earlier, with the observed curve. `type = "horizons"` shows one column per band and one row per horizon. `type = "series"` shows a few grid points over time, and `type = "recent"` the last curves with the forecasts.
+
+The first plot is the one-year-ahead forecast for 2007 with its AC band. The second is the forecast of the 11th test year, 1995, made three years earlier, with the observed curve.
 
 ```{r, fig.height = 4}
 plot(fc, h = 1, band = "AC", xlab = "Age", ylab = "log10 death rate")
@@ -205,13 +258,9 @@ plot(fc, h = 1, band = "AC", xlab = "Age", ylab = "log10 death rate")
 plot(fc, h = 3, target_test_curve = 11, band = "AC", level = 0.95, xlab = "Age", ylab = "log10 death rate")
 ```
 
-`type = "horizons"` shows one column per band and one row per horizon:
-
 ```{r, fig.height = 7}
 plot(fc, type = "horizons", xlab = "Age", ylab = "log10 death rate")
 ```
-
-`type = "series"` shows the curves over time at a few ages, and `type = "recent"` the last curves with the forecasts:
 
 ```{r, fig.height = 3.5}
 plot(fc, type = "series", at = c(0, 20, 50, 80), band = "AC", main = "Age", xlab = "Year", ylab = "log10 death rate")
@@ -221,7 +270,9 @@ plot(fc, type = "series", at = c(0, 20, 50, 80), band = "AC", main = "Age", xlab
 plot(fc, type = "recent", xlab = "Age", ylab = "log10 death rate")
 ```
 
-## 6. Tables: `as.data.frame()`
+## 9. Tables: `as.data.frame()`
+
+`as.data.frame()` puts the forecasts in a table with one row per grid point, horizon, band and level. By default it gives the forecasts beyond the data. With `test = TRUE`, it gives the forecasts of the test curves, with their origins and the observed values.
 
 ```{r}
 head(as.data.frame(fc), 3)
@@ -229,18 +280,22 @@ df_test = as.data.frame(fc, test = TRUE)
 head(df_test, 3)
 ```
 
-The coverage of the 95% AC band at `h = 1`:
+The table makes summaries easy. For example, the coverage of the 95% AC band at `h = 1`:
 
 ```{r}
 ac95 = subset(df_test, band == "AC" & level == 0.95 & h == 1)
 mean(ac95$observed >= ac95$lower & ac95$observed <= ac95$upper)
 ```
 
-## 7. The steps on their own
+## 10. The steps on their own
 
-`farfima()` runs three steps, and each can also be run on its own. The memory parameter is estimated on the original curves, and the orders and operators on short-memory curves.
+The three steps of `farfima()` can also be run on their own. The memory parameter is estimated on the original curves, and the orders and operators on short-memory curves.
 
 ### Memory parameter: `estimate_memory()`
+
+`estimate_memory()` estimates $d$ from the leading score process, the centred curves projected onto the leading eigenfunction of a covariance-type operator. The estimators are local Whittle (`"lw"`), detrended fluctuation analysis (`"dfa"`), local polynomial Whittle with noise (`"lpwn1"`, `"lpwn2"`), and their bias-corrected versions by the prefiltered sieve bootstrap (`"bc_lpwn1"`, `"bc_lpwn2"`). `m_const` sets the bandwidth, and `B` the number of bootstrap samples.
+
+With the same seed, BC-LPWN2 gives the estimate used by `fit`:
 
 ```{r}
 m = estimate_memory(blocks$train, method = "bc_lpwn2", seed = 1)
@@ -250,7 +305,7 @@ sapply(c("dfa", "lw", "lpwn1", "lpwn2"), function(meth) estimate_memory(blocks$t
 
 ### Fractional differencing: `frac_diff()`
 
-`farfima()` centres the training curves, fractionally differences them with `d` and drops the first `trim`. The same steps by hand give the short-memory curves `y`:
+`frac_diff()` applies $\nabla^d = (1 - B)^d$ at every grid point. `farfima()` centres the training curves, fractionally differences them with `d` and drops the first `trim`. The same steps by hand give the short-memory curves `y`:
 
 ```{r}
 y = frac_diff(blocks$train - rowMeans(blocks$train), d = m$d)[, -(1:20)]
@@ -265,6 +320,8 @@ max(abs(frac_diff(z, d = -m$d) - blocks$train))
 ```
 
 ### FARMA orders: `select_order()`
+
+`select_order()` selects $p$ and $q$ for short-memory curves. `"ic_full"` minimises the adaptive functional Hannan-Quinn information criterion over all candidates, and `"ic_auto"` uses the same criterion with a stepwise search. `"bj"`, the functional Box-Jenkins method, tries the candidates by increasing $p + q$ and stops at the first whose residuals pass the functional portmanteau test. `"cv"` minimises the forecast error on a validation sample. `plot()` shows the criterion of each candidate, with the selected model boxed.
 
 ```{r}
 o_ic = select_order(y, method = "ic_full")
@@ -295,17 +352,23 @@ par(oldpar)
 
 ### Operators: `estimate_operators()`
 
+`estimate_operators()` estimates the operators of a FARMA(p, q) model by the functional Hannan-Rissanen method. Each operator is stored as a grid by grid matrix, so applying it to a curve is a matrix product. `plot()` draws the operators as heatmaps, red for positive and blue for negative values.
+
+With the selected orders, it gives the operators of `fit`:
+
 ```{r}
 op = estimate_operators(y, order = o_ic)
 op
-all.equal(op$phi, fit$phi)
+all.equal(op[c("phi", "theta")], fit[c("phi", "theta")])
 ```
 
 ```{r, fig.width = 6, fig.height = 4.5}
 plot(op, xlab = "Age v", ylab = "Age u")
 ```
 
-## 8. Simulated data: `sim_farfima()`
+## 11. Simulated data: `sim_farfima()`
+
+`sim_farfima()` simulates `n` curves from a FARFIMA(p, d, q) model on `no_grid` equally spaced points of [0, 1], with Brownian motion innovations. `ar_strength` and `ma_strength` set the operator norms. Simulated curves are useful to check the methods when the true model is known:
 
 ```{r}
 sim = sim_farfima(n = 500, d = 0.3, p = 1, q = 0, ar_strength = 0.5, seed = 1)
@@ -315,7 +378,7 @@ fit_sim$d
 fit_sim$order
 ```
 
-## 9. Unstable fits
+## 12. Unstable fits
 
 Large orders can give unstable operators. `farfima()` then warns, and forecast origins whose fit fails are skipped with a warning.
 
@@ -324,3 +387,7 @@ fit_33 = farfima(blocks$train, blocks$valid, d = fit$d, order = c(3, 3), h = 5, 
 fit_33
 fc_33 = predict(fit_33, test = blocks$test, verbose = FALSE)
 ```
+
+## 13. Summary
+
+The farfima package fits FARFIMA models to functional time series in three steps, estimating the memory parameter, selecting the FARMA orders and estimating the operators, and forecasts the curves with conformal prediction bands. `farfima()` and `predict()` cover the usual workflow, and each step can also be run on its own. The help pages give the details of each function and its references.

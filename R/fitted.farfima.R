@@ -17,7 +17,7 @@
 #' @return `fitted()` returns the fitted curves and `residuals()` the residual
 #'   curves, each as a matrix with grid points in rows and training curves in
 #'   columns.
-#' @seealso [farfima()]
+#' @seealso [farfima()]; [`plot()`][plot.farfima] to draw the curves.
 #' @examples
 #' sim = sim_farfima(n = 200, d = 0.3, p = 1, q = 0, seed = 1)
 #' fit = farfima(sim, d = 0.3, order = c(1, 0), trim = 50, verbose = FALSE)

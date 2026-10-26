@@ -20,7 +20,8 @@ samples, and \code{\link[=plot_curves]{plot_curves()}} draws them.
 differenced curves as in \code{\link[=select_order]{select_order()}}, estimates their operators as
 in \code{\link[=estimate_operators]{estimate_operators()}}, and calibrates the conformal prediction bands
 on the validation sample. \code{\link[=fitted.farfima]{fitted()}} and
-\code{\link[=fitted.farfima]{residuals()}} give the in-sample fit.
+\code{\link[=fitted.farfima]{residuals()}} give the in-sample fit, and
+\code{\link[=plot.farfima]{plot()}} draws it.
 \item \code{\link[=predict.farfima]{predict()}} forecasts from the fit, with conformal
 prediction bands, and evaluates the forecasts on a test sample.
 \item \code{\link[=plot.farfima_forecast]{plot()}} visualises the forecasts, and

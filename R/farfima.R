@@ -97,8 +97,8 @@
 #'   `n_origin` (number of validation origins). `NULL` without a validation
 #'   sample.
 #'
-#' `print()` and `summary()` show the fit, and `coef()` gives `d`, `phi` and
-#' `theta`.
+#' `print()` and `summary()` show the fit, `coef()` gives `d`, `phi` and
+#' `theta`, and [`plot()`][plot.farfima] draws the fitted or residual curves.
 #' @seealso [`predict()`][predict.farfima] to forecast from the fit;
 #'   [estimate_memory()], [select_order()] and [estimate_operators()] for the
 #'   steps on their own.

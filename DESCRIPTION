@@ -1,0 +1,48 @@
+Package: farfima
+Type: Package
+Title: Order Selection and Forecasting in Long-Memory Functional Time Series
+Version: 0.1.0
+Authors@R: c(
+    person("Chang", "Liu", email = "chang.liu45@students.mq.edu.au", role = c("aut", "cre")),
+    person("Han Lin", "Shang", role = "aut"),
+    person("Garth", "Tarr", role = "aut"),
+    person("Samuel", "Müller", role = "aut")
+    )
+Description: Provides tools for modelling, forecasting and visualising
+    long-memory functional time series with the functional autoregressive
+    fractionally integrated moving-average model. The model is fitted in three
+    steps, each of which can also be used on its own. First, the memory
+    parameter is estimated from the leading principal component scores, for
+    example by local Whittle or by bias-corrected local polynomial Whittle with
+    noise. Second, the autoregressive and moving-average orders of the
+    fractionally differenced curves are selected by a functional information
+    criterion, functional Box-Jenkins or cross-validation. Third, the operators
+    are estimated. The point forecasts come with conformal prediction bands that
+    quantify their uncertainty. Visualisation tools include improved rainbow
+    plots and plots of the fitted model and its forecasts.
+License: GPL-2
+Encoding: UTF-8
+Depends: R (>= 4.1.0)
+Imports:
+    FCVAR,
+    far,
+    ftsa,
+    longmemo,
+    rainbow,
+    sde,
+    stats,
+    utils,
+    graphics,
+    grDevices,
+    vars,
+    withr,
+    wwntests
+Suggests:
+    demography,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.0.0)
+VignetteBuilder: knitr
+Config/testthat/edition: 3
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.2

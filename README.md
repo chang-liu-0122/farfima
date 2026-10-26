@@ -1,7 +1,7 @@
 <p align="center">
-  <img src="man/figures/macquarie-logo.png" alt="Macquarie University" width="200">
-  &emsp;
-  <img src="man/figures/usyd-logo.png" alt="The University of Sydney" width="135">
+  <img src="man/figures/macquarie-logo.png" alt="Macquarie University" width="161">
+  &emsp;&emsp;
+  <img src="man/figures/usyd-logo.png" alt="The University of Sydney" width="136">
 </p>
 
 # farfima

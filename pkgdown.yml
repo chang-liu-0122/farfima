@@ -1,0 +1,9 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  farfima: farfima.html
+last_built: 2026-10-26T08:57Z
+urls:
+  reference: https://chang-liu-0122.github.io/farfima/reference
+  article: https://chang-liu-0122.github.io/farfima/articles
